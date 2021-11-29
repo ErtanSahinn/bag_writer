@@ -12,10 +12,11 @@ class message_rxstatus():
 
         self.prepare_msg()
         self.seq = 0
+        self.define_errors()
 
     def open_bag(self):
 
-        self.bag = rosbag.Bag("/home/capoom/catkin_ws/src/gnss_error/scripts/deneme.bag","w")
+        self.bag = rosbag.Bag("/home/capoom/Desktop/all/gnss_error/scripts/deneme.bag","w")
 
         for topic, msg, t in self.bag.read_messages(topics=["/novatel/oem7/bestpos"]):
             
@@ -38,7 +39,7 @@ class message_rxstatus():
 
 
     def set_msg(self,list_of_checked):
-        
+        # 8 pll rf,  21 com tx buffer, 22 jammer
         
         checkbox_names = ['DRAM', 'Invalid FW', 'ROM', 'ESN Access', 'AuthCode', 'Supply Voltage', 'Temperature', 'MINOS', 'PLL RF', 'NVM', 'Software resource limit exceeded', 'Model invalid for this receiver', 'Remote loading has begun', 'Export restriction', 'Safe Mode', 'Component hardware failure', 'Voltage Supply', 'Primary antenna not powered', 'LNA Failure', 'Primary antenna open circuit', 'Primary antenna short circuit', 'COM port tx buffer overrun', 'Jammer detected', 'IMU communication failure', 'Throttled Ethernet Reception', 'Ethernet not connected', 'IMU measurement outlier detected', 'Secondary antenna not powered', 'Secondary antenna open circuit', 'Secondary antenna short circuit', '<60% of available satellites are tracked well', '<15% of available satellites are tracked well', 'No TerraStar Subscription']
 
@@ -49,26 +50,82 @@ class message_rxstatus():
         self.msg.aux2_stat_strs = []
         self.msg.aux3_stat_strs = []
         self.msg.aux4_stat_strs = []
+
+        self.msg.error_bits = []
+        self.msg.rxstat_bits = []
+        self.msg.aux1_stat_bits = []
+        self.msg.aux2_stat_bits = []
+        self.msg.aux3_stat_bits = []
+        self.msg.aux4_stat_bits = []
+
+        error_bits_int = []
+        rxstat_bits_int = []
+        aux1_stat_bits_int = []
+        aux2_stat_bits_int = []
+        aux3_stat_bits_int = []
+        aux4_stat_bits_int = []
          
         for check in list_of_checked:
           if(check<=15):
-            self.msg.error_strs.append(checkbox_names[check]) 
+            self.msg.error_strs.append(checkbox_names[check])
+            error_bits_int.append(chr(self.words_dict["error_list"].index(checkbox_names[check])))
+            if(check==8):
+              self.msg.aux2_stat_strs.append(self.words_dict["aux2_list"][12]) # 12,13,14,15,16,17
+              self.msg.aux2_stat_strs.append(self.words_dict["aux2_list"][13])
+              self.msg.aux2_stat_strs.append(self.words_dict["aux2_list"][16])
+              aux2_stat_bits_int.append(chr(self.words_dict["aux2_list"].index(self.words_dict["aux2_list"][12])))
+              aux2_stat_bits_int.append(chr(self.words_dict["aux2_list"].index(self.words_dict["aux2_list"][13])))
+              aux2_stat_bits_int.append(chr(self.words_dict["aux2_list"].index(self.words_dict["aux2_list"][16])))
           elif(check>=16 and check <=23):
             self.msg.rxstat_strs.append(checkbox_names[check])
+            rxstat_bits_int.append(chr(self.words_dict["status_list"].index(checkbox_names[check])))
+            if(check == 21):
+              self.msg.aux2_stat_strs.append(self.words_dict["aux2_list"][2]) # 2,3,9,10,11
+              self.msg.aux2_stat_strs.append(self.words_dict["aux2_list"][9])
+              self.msg.aux2_stat_strs.append(self.words_dict["aux2_list"][11])
+              aux2_stat_bits_int.append(chr(self.words_dict["aux2_list"].index(self.words_dict["aux2_list"][2])))
+              aux2_stat_bits_int.append(chr(self.words_dict["aux2_list"].index(self.words_dict["aux2_list"][9])))
+              aux2_stat_bits_int.append(chr(self.words_dict["aux2_list"].index(self.words_dict["aux2_list"][11])))
+            if(check==22):
+              self.msg.aux1_stat_strs.append(self.words_dict["aux1_list"][0]) # 0,1,2,4,5,6
+              self.msg.aux1_stat_strs.append(self.words_dict["aux1_list"][1])
+              self.msg.aux1_stat_strs.append(self.words_dict["aux1_list"][2])
+              aux1_stat_bits_int.append(chr(self.words_dict["aux1_list"].index(self.words_dict["aux1_list"][0])))
+              aux1_stat_bits_int.append(chr(self.words_dict["aux1_list"].index(self.words_dict["aux1_list"][1])))
+              aux1_stat_bits_int.append(chr(self.words_dict["aux1_list"].index(self.words_dict["aux1_list"][2])))
           elif(check>=24 and check <=26):
             self.msg.aux1_stat_strs.append(checkbox_names[check])
+            aux1_stat_bits_int.append(chr(self.words_dict["aux1_list"].index(checkbox_names[check])))
           elif(check>=27 and check <=29):
             self.msg.aux2_stat_strs.append(checkbox_names[check])
+            aux2_stat_bits_int.append(chr(self.words_dict["aux2_list"].index(checkbox_names[check])))
           elif(check>=30 and check <=32):
             self.msg.aux4_stat_strs.append(checkbox_names[check])
+            aux4_stat_bits_int.append(chr(self.words_dict["aux4_list"].index(checkbox_names[check])))
         
         self.msg.header.seq = self.seq
         self.msg.header.stamp.secs = time.time()
 
+        error_bits_int.sort()
+        rxstat_bits_int.sort()
+        aux1_stat_bits_int.sort()
+        aux2_stat_bits_int.sort()
+        aux4_stat_bits_int.sort()
+
+        self.msg.error_bits = "".join(error_bits_int)
+        self.msg.rxstat_bits = "".join(rxstat_bits_int)
+        self.msg.aux1_stat_bits = "".join(aux1_stat_bits_int)
+        self.msg.aux2_stat_bits = "".join(aux2_stat_bits_int)
+        self.msg.aux4_stat_bits = "".join(aux4_stat_bits_int)
+        
+
+
         self.bestposmsg.lat_stdev = random.random()
         self.bestposmsg.lon_stdev = random.random()
 
-
+      # self.words_dict
+      # self.words_dict = {"error_list":error_list,"status_list":status_list, "aux1_list":aux1_list, "aux2_list":aux2_list,
+      #                       "aux3_list":aux3_list, "aux4_list":aux4_list}
     def prepare_msg(self):
         """
         self.msg = RXSTATUS
@@ -123,7 +180,7 @@ class message_rxstatus():
         """
         #return self.msg
         
-        self.bagsss = rosbag.Bag("/home/capoom/catkin_ws/src/gnss_error/scripts/test.bag")
+        self.bagsss = rosbag.Bag("/home/capoom/Desktop/all/gnss_error/scripts/test.bag")
         for topic, msg, t in self.bagsss.read_messages(topics=["/novatel/oem7/rxstatus","/novatel/oem7/bestpos"]):
             if(topic == "/novatel/oem7/rxstatus"):
                 self.msg = msg
